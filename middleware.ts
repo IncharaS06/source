@@ -1,32 +1,22 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import createMiddleware from "next-intl/middleware";
+import {NextRequest} from "next/server";
 
-const LOCALES = ["en", "kn", "hi"] as const;
+const locales = ["en", "kn", "hi"] as const;
+const defaultLocale = "en";
 
-export function middleware(req: NextRequest) {
-    const { pathname } = req.nextUrl;
-
-    // allow next internals + public assets
-    if (
-        pathname.startsWith("/_next") ||
-        pathname.startsWith("/favicon.ico") ||
-        pathname.startsWith("/assets")
-    ) {
-        return NextResponse.next();
-    }
-
-    // If path already has locale like /en/..., do nothing
-    const first = pathname.split("/")[1];
-    if (LOCALES.includes(first as any)) {
-        return NextResponse.next();
-    }
-
-    // Redirect non-locale paths to /en
-    const url = req.nextUrl.clone();
-    url.pathname = `/en${pathname === "/" ? "" : pathname}`;
-    return NextResponse.redirect(url);
+export default function middleware(req: NextRequest) {
+  // next-intl will:
+  // - redirect "/" -> "/en" (defaultLocale)
+  // - keep "/en/*", "/kn/*", "/hi/*" as-is
+  // - optionally detect locale from headers (if localePrefix = "as-needed"/etc)
+  return createMiddleware({
+    locales: [...locales],
+    defaultLocale,
+    localePrefix: "always" // keeps your current behavior: always /en, /kn, /hi
+  })(req);
 }
 
 export const config = {
-    matcher: ["/((?!api).*)"],
+  // Exclude: api, _next, static files like .png, .ico, etc
+  matcher: ["/((?!api|_next|.*\\..*).*)"],
 };
